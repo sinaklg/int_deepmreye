@@ -3,23 +3,39 @@
 cerimed_deepmreye.py
 -----------------------------------------------------------------------------------------
 Goal of the script:
-Run deepmreye on fmriprep output 
+Run deepmreye using INT fine tuned weights on fmriprep output 
 -----------------------------------------------------------------------------------------
 Input(s):
+sys.argv[1] -> main directory (str)
+sys.argv[2] -> project name (str)
+sys.argv[3] -> task name (str)
+sys.argv[4] -> group name (str) 
 -----------------------------------------------------------------------------------------
 Output(s):
-TSV with gaze position
+BIDS extended folder structre with deepmreye output: 
+- figures: prediction_visualizer.html (Overview of prediction for all subjects)
+- masks: MNI space registered eyevoxel masks 
+- pp_data: labels used by model 
+- pred: tsv.gz (timestamp, x, y) of prediction in median (1/TR) and subTR (10/TR) resolution 
+for each subject as well as evaluation_dict.npy with all predictions and scores with 
+evaluation of prediction to labels
+- report: eye voxel mask extraction report per subject 
+- func: copied relavant func files 
 -----------------------------------------------------------------------------------------
 To run:
 1. cd to function
 >> cd /home/mszinte/projects/gaze_prf/analysis_code/deepmreye
-2. python deepmreye_analysis.py [main directory] [project name] [group]
+2. python deepmreye_analysis.py [main directory] [project name] [task] [group]
 -----------------------------------------------------------------------------------------
 Exemple:
 cd ~/projects/deepmreye/training_code
-python cerimed_deepmreye.py /scratch/mszinte/data deepmreye 327 
+python cerimed_deepmreye.py /scratch/mszinte/data deepmreye DeepMReyeCalib 327 
 -----------------------------------------------------------------------------------------
 """
+#TODO 
+#flag to delete copied func files after running? 
+#find good name for repo
+
 # Import modules and add library to path
 import sys
 import json
@@ -35,36 +51,13 @@ from deepmreye import analyse, preprocess, train
 from deepmreye.util import data_generator, model_opts 
 
 sys.path.append("{}/utils".format(os.getcwd()))
-from training_utils import detrending
+from training_utils import adapt_evaluation
 
 
-def adapt_evaluation(participant_evaluation):
-    pred_y = participant_evaluation["pred_y"]
-    pred_y_median = np.nanmedian(pred_y, axis=1)
-    pred_uncertainty = abs(participant_evaluation["euc_pred"])
-    pred_uncertainty_median = np.nanmedian(pred_uncertainty, axis=1)
-    df_pred_median = pd.DataFrame(
-        np.concatenate(
-            (pred_y_median, pred_uncertainty_median[..., np.newaxis]), axis=1),
-        columns=["X", "Y", "Uncertainty"],
-    )
-    # With subTR
-    subtr_values = np.concatenate((pred_y, pred_uncertainty[..., np.newaxis]),
-                                  axis=2)
-    index = pd.MultiIndex.from_product(
-        [range(subtr_values.shape[0]),
-         range(subtr_values.shape[1])],
-        names=["TR", "subTR"])
-    df_pred_subtr = pd.DataFrame(subtr_values.reshape(-1,
-                                                      subtr_values.shape[-1]),
-                                 index=index,
-                                 columns=["X", "Y", "pred_error"])
-
-    return df_pred_median, df_pred_subtr
-
-# Define paths to functional data
-main_dir = f"{sys.argv[1]}/{sys.argv[2]}/derivatives/deepmreye_calib" 
+# Define paths 
+main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") #TODO find good name 
 project_name = sys.argv[2]
+fig_dir = f"{main_dir}/figures"
 func_dir = f"{main_dir}/func"  
 model_dir = f"{main_dir}/model/"
 model_file = f"{model_dir}modelinference_DeepMReyeCalib.h5" 
@@ -74,18 +67,19 @@ report_dir = f"{main_dir}/report"
 pred_dir = f"{main_dir}/pred"
 
 # Make directories
+os.makedirs(fig_dir, exist_ok=True)
 os.makedirs(pp_dir, exist_ok=True)
 os.makedirs(mask_dir, exist_ok=True)
 os.makedirs(report_dir, exist_ok=True)
 os.makedirs(pred_dir, exist_ok=True)
 
 
-# copy func files 
-
 # Define settings
-with open('settings.json') as f:
-    json_s = f.read()
-    settings = json.loads(json_s)
+settings_file = "settings.json"
+if not os.path.exists(settings_file):
+    raise FileNotFoundError(f"Settings file {settings_file} not found.")
+with open(settings_file) as f:
+    settings = json.load(f)
 
 subjects = settings['subjects']
 ses = settings["session"]
@@ -101,8 +95,30 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # stop warning
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"  # use 3 gpu cards 
 
 
+# -------------------- Copy func files --------------------------------------------------------
+func_source_dir = f"{main_dir}/{project_name}/derivatives/fmriprep/fmriprep"
+dest_dir = func_dir
+task = sys.argv[3]
 
-# Preload masks to save time within subject loop
+for root, dirs, files in os.walk(func_source_dir):
+    for file in files:
+        if f"task-{task}" in file and "space-T1w_desc-preproc_bold.nii.gz" in file:
+
+            parts = root.split(os.sep)
+            subject = next((p for p in parts if p.startswith("sub-")), "unknown")
+            
+            # Define destination directory for the subject and session
+            subject_dest = os.path.join(dest_dir, subject)
+            os.makedirs(subject_dest, exist_ok=True)
+            
+            # Copy file to new location
+            src_file = os.path.join(root, file)
+            dest_file = os.path.join(subject_dest, file)
+          # shutil.copy(src_file, dest_file)
+            print(f"Copied {src_file} -> {dest_file}")
+
+
+# -------------- Preload masks to save time within subject loop---------------------------------
 (eyemask_small, eyemask_big, dme_template, mask, x_edges, y_edges, z_edges) = preprocess.get_masks()
 
 for subject in subjects:
@@ -113,10 +129,9 @@ for subject in subjects:
 
 
     for func_file in func_files:
-        mask_sub_dir_check = os.listdir(mask_sub_dir) 
-        print(mask_sub_dir_check)
-        
-        if len(mask_sub_dir_check) != 0: 
+        # Check if masks already exist
+        if os.path.exists(mask_sub_dir) and os.listdir(mask_sub_dir):
+
             print(f"Mask for {subject} exists. Continuing")
         else:
             preprocess.run_participant(fp_func=func_file, 
@@ -126,7 +141,7 @@ for subject in subjects:
                                        x_edges=x_edges, y_edges=y_edges, z_edges=z_edges,
                                        transforms=['Affine', 'Affine', 'SyNAggro'])
 
-# Move to destination folder
+# Move .p and .html to destination folders
 for subject in subjects:
 	func_sub_dir = f"{func_dir}/{subject}"
 	
@@ -143,7 +158,7 @@ for subject in subjects:
 	os.system(rm_report_cmd)
      
 
-# Pre-process data
+# -------------------- Pre-process data ---------------------------------------------
 for subject in subjects:    
     subject_data = []
     subject_labels = [] 
@@ -151,7 +166,7 @@ for subject in subjects:
 
     for run in range(num_run): 
          # Identify mask and label files
-            mask_filename = f"mask_{subject}_ses-02_task-DeepMReyeCalib_run-0{run + 1}_space-T1w_desc-preproc_bold.p"
+            mask_filename = f"mask_{subject}_ses-02_task-{task}_run-0{run + 1}_space-T1w_desc-preproc_bold.p"
             
 
             mask_path = os.path.join(mask_dir, subject, mask_filename)
@@ -166,7 +181,7 @@ for subject in subjects:
             this_mask = preprocess.normalize_img(this_mask)
 
             # No labels bc pretrained
-            this_label = this_label = np.zeros(
+            this_label = np.zeros(
                 (this_mask.shape[3], 10, 2)
             )
 
@@ -217,16 +232,16 @@ generators = data_generator.create_generators(test_participants,
 generators = (*generators, test_participants, test_participants
               )  # Add participant list
 
-# Train and evaluate model
+# -------------------- Train and evaluate model -----------------------------------------
 # Get untrained model and load with trained weights
-(model, model_inference) = train.train_model(dataset=f"{project_name}_PT",
+(model, model_inference) = train.train_model(dataset=f"{task}_PT",
                                              generators=generators,
                                              opts=opts,
                                              return_untrained=True)
 model_inference.load_weights(model_file)
 
 (evaluation, scores) = train.evaluate_model(
-    dataset=f"{project_name}_PT",
+    dataset=f"{task}_PT",
     model=model_inference,
     generators=generators,
     save=False,
@@ -236,26 +251,30 @@ model_inference.load_weights(model_file)
     percentile_cut=80,
 )    
 
-
+fig = analyse.visualise_predictions_slider(evaluation, scores, ylim=settings["ylim"])
+fig.write_html(f"{fig_dir}/prediction_visualizer.html")
    
 # Sava data      
-np.save(f"{pred_dir}/evaluation_dict_{project_name}.npy",evaluation)
-   
-np.save(f"{pred_dir}/scores_dict_{project_name}.npy",scores)
+np.save(f"{pred_dir}/evaluation_dict_{task}.npy",evaluation)
+np.save(f"{pred_dir}/scores_dict_{task}.npy",scores)
 
 # Save predictions as tsv
 labels_list = os.listdir(pp_dir)
 
 for label in labels_list: 
-    #TODO add fake timestamps
     df_pred_median, df_pred_subtr = adapt_evaluation(evaluation[f'{main_dir}/pp_data/{label}'])
-    df_pred_median.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_median.tsv', sep='\t', index=False)
-    df_pred_subtr.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_subtr.tsv', sep='\t', index=False)
-
+    
+    # Add timestamps
+    df_pred_median.insert(0, 'timestamp', df_pred_median.index * TR)
+    df_pred_subtr.insert(0, 'timestamp', df_pred_subtr.index * (10 * TR))
+    
+    # Save to CSV
+    df_pred_median.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
+    df_pred_subtr.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
 
 
 
 # Add chmod/chgrp
 print(f"Changing files permissions in {sys.argv[1]}/{sys.argv[2]}")
-os.system(f"chmod -Rf 771 {sys.argv[1]}/{sys.argv[2]}") #adapt
+os.system(f"chmod -Rf 771 {sys.argv[1]}/{sys.argv[2]}") #TODO adapt
 os.system(f"chgrp -Rf {sys.argv[3]} {sys.argv[1]}/{sys.argv[2]}")
