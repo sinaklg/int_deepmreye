@@ -24,8 +24,7 @@ evaluation of prediction to labels
 -----------------------------------------------------------------------------------------
 To run:
 1. cd to function
->> cd /home/mszinte/projects/gaze_prf/analysis_code/deepmreye
-2. python deepmreye_analysis.py [main directory] [project name] [task] [group]
+2. python cerimed_deepmreyes.py [main directory] [project name] [task] [group]
 -----------------------------------------------------------------------------------------
 Exemple:
 cd ~/projects/deepmreye/training_code
@@ -60,7 +59,7 @@ project_name = sys.argv[2]
 fig_dir = f"{main_dir}/figures"
 func_dir = f"{main_dir}/func"  
 model_dir = f"{main_dir}/model/"
-model_file = f"{model_dir}modelinference_DeepMReyeCalib.h5" 
+model_file = f"{model_dir}modelinference_DeepMReyeCalib.h5"  #TODO where to store weights
 pp_dir = f"{main_dir}/pp_data_pretrained/"
 mask_dir = f"{main_dir}/mask"
 report_dir = f"{main_dir}/report"
@@ -100,6 +99,8 @@ func_source_dir = f"{main_dir}/{project_name}/derivatives/fmriprep/fmriprep"
 dest_dir = func_dir
 task = sys.argv[3]
 
+#TODO 
+# if copy files ()
 for root, dirs, files in os.walk(func_source_dir):
     for file in files:
         if f"task-{task}" in file and "space-T1w_desc-preproc_bold.nii.gz" in file:

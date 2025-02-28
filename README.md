@@ -19,14 +19,23 @@ Install DeepMReye with a CPU/GPU version of TensorFlow using the following comma
 conda create --name deepmreye python=3.9
 conda activate deepmreye
 pip install deepmreye
+pip install -r requirements.txt
 
 ```
 
 For GPU support, install correct tensorflow version and GPU toolkits:
 
 ```
-pip install tensorflow==2.11
+pip install tensorflow==2.11.0
 conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+
+```
+
+## Model Weights and Example Data 
+Model weights and example data are available on figshare. Download everything automatically by running: 
+
+```
+python example_usage.py [extraction directory]
 
 ```
 
@@ -71,7 +80,6 @@ main_dir/project_name/derivatives
 All parameters are set in settings. Specify your experiment details beforehand. For example:
 
 ```
-
 "subjects": ["sub-0X","sub-0Y"], 
 "session": "ses-00", 
 "eye": "eye1", 
@@ -80,3 +88,18 @@ All parameters are set in settings. Specify your experiment details beforehand. 
 
 ```
 
+# Steps to follow 
+
+1. Generate SLURM script by running 
+
+``` 
+python generate_sh.py 
+
+```
+
+2. Run SLURM script to run the main deepmreye pipeline on mesocentre
+
+```
+sbatch run_pretraining.sh 
+
+```
