@@ -41,7 +41,7 @@ python example_usage.py [extraction directory]
 
 ## Pipeline 
 
-Folder structure extents extisting BIDS structure. This is how the data repository will be structured. Download the weights from (). 
+Folder structure extents extisting BIDS structure. This is how the data repository will be structured. Download the weights from (https://figshare.com/s/a381947ea8564235cdd0) or by running the example_usage script (see below).
 
 ```bash
 main_dir/project_name/derivatives
