@@ -88,7 +88,9 @@ All parameters are set in settings. Specify your experiment details beforehand. 
 
 ```
 
-# Steps to follow 
+# Steps to follow for GPU usage mesocentre
+
+Make sure the partition in settings is set to "volta" or "kepler". 
 
 1. Generate SLURM script by running 
 
@@ -101,5 +103,14 @@ python generate_sh.py
 
 ```
 sbatch run_pretraining.sh 
+
+```
+
+# Steps to follow for local running 
+
+Just run the main script with
+
+```
+python cerimed_deepmreye.py [main_directory] [project_name] [task] [group]
 
 ```
