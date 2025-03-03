@@ -1,5 +1,5 @@
 {
-"subjects": ["sub-01","sub-02", "sub-03"], 
+"subjects": ["sub-01", "sub-03"], 
 "session": "ses-02", 
 "eye": "eye1", 
 "num_run": 3,
