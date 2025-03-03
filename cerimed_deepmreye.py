@@ -44,6 +44,7 @@ import glob
 import warnings
 import numpy as np
 import pandas as pd
+import shutil
 
 # DeepMReye imports
 from deepmreye import analyse, preprocess, train
@@ -82,6 +83,7 @@ with open(settings_file) as f:
 
 subjects = settings['subjects']
 ses = settings["session"]
+print(ses)
 num_run = settings["num_run"]
 subTRs = settings['subTRs']
 TR = settings['TR']
@@ -91,7 +93,7 @@ opts["train_test_split"] = settings["train_test_split"]  #80/20
 
 # Define environment cuda
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # stop warning
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"  # use 3 gpu cards 
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"  # use 3 gpu cards 
 
 
 # -------------------- Copy func files --------------------------------------------------------
@@ -126,52 +128,49 @@ for subject in subjects:
     print(f"Running {subject}")
     func_sub_dir = f"{func_dir}/{subject}"
     mask_sub_dir = f"{mask_dir}/{subject}"
+    os.makedirs(mask_sub_dir, exist_ok=True)
     func_files = glob.glob(f"{func_sub_dir}/*.nii.gz")
 
 
     for func_file in func_files:
-        # Check if masks already exist
-        if os.path.exists(mask_sub_dir) and os.listdir(mask_sub_dir):
+        mask_files = glob.glob(f"{mask_sub_dir}/*.p")  
 
+        if mask_files:
             print(f"Mask for {subject} exists. Continuing")
-        else:
+        else: 
+            print(f"Mask missing for {subject}. Running mask generation...")
             preprocess.run_participant(fp_func=func_file, 
-                                       dme_template=dme_template, 
-                                       eyemask_big=eyemask_big, 
-                                       eyemask_small=eyemask_small,
-                                       x_edges=x_edges, y_edges=y_edges, z_edges=z_edges,
-                                       transforms=['Affine', 'Affine', 'SyNAggro'])
+                                    dme_template=dme_template, 
+                                    eyemask_big=eyemask_big, 
+                                    eyemask_small=eyemask_small,
+                                    x_edges=x_edges, y_edges=y_edges, z_edges=z_edges,
+                                    transforms=['Affine', 'Affine', 'SyNAggro'])
+            
+            # Find newly created mask files in func_dir
+            new_mask_files = glob.glob(f"{func_sub_dir}/*.p")  
+            
+            if new_mask_files:
+                print(f"Moving mask files for {subject} to {mask_sub_dir}...")
+                for mask_file in new_mask_files:
+                    shutil.move(mask_file, mask_sub_dir)
+                print(f"Mask files moved successfully to {mask_sub_dir}.")
+            else:
+                print(f"WARNING: No mask files found in {func_sub_dir} after processing.")
 
-# Move .p and .html to destination folders
-for subject in subjects:
-	func_sub_dir = f"{func_dir}/{subject}"
-	
-	# .p files
-	rsync_mask_cmd = f"rsync -avuz {func_sub_dir}/*.p {mask_dir}/{subject}/"
-	rm_mask_cmd = f"rm -Rf {func_sub_dir}/*.p"
-	os.system(rsync_mask_cmd)
-	os.system(rm_mask_cmd)
-	
-	# .html files
-	rsync_report_cmd = f"rsync -avuz --remove-source-files {func_sub_dir}/*.html {report_dir}/{subject}/"
-	rm_report_cmd = f"rm -Rf {func_sub_dir}/*.html"
-	os.system(rsync_report_cmd)
-	os.system(rm_report_cmd)
-     
+            
 
 # -------------------- Pre-process data ---------------------------------------------
+# Pre-process data
 for subject in subjects:    
+    print(f"Preprocessing {subject}")
     subject_data = []
     subject_labels = [] 
     subject_ids = []
 
     for run in range(num_run): 
          # Identify mask and label files
-            mask_filename = f"mask_{subject}_ses-02_task-{task}_run-0{run + 1}_space-T1w_desc-preproc_bold.p"
-            
-
+            mask_filename = f"mask_{subject}_{ses}_task-{task}_run-0{run + 1}_space-T1w_desc-preproc_bold.p"
             mask_path = os.path.join(mask_dir, subject, mask_filename)
-            
 
             if not os.path.exists(mask_path):
                 print(f"WARNING --- Mask file {mask_filename} not found for Subject {subject} Run {run + 1}.")
@@ -182,7 +181,7 @@ for subject in subjects:
             this_mask = preprocess.normalize_img(this_mask)
 
             # No labels bc pretrained
-            this_label = np.zeros(
+            this_label = this_label = np.zeros(
                 (this_mask.shape[3], 10, 2)
             )
 
@@ -201,15 +200,13 @@ for subject in subjects:
             subject_ids.append(([subject] * this_label.shape[0],
                                     [run + 1] * this_label.shape[0]))
             
-    
     # Save participant file
-    preprocess.save_data(participant=f"{subject}_{project_name}_no_label",
+    preprocess.save_data(participant=f"{subject}_{task}_no_label",
                             participant_data=subject_data,
                             participant_labels=subject_labels,
                             participant_ids=subject_ids,
                             processed_data=pp_dir,
                             center_labels=False)
-
 try:
     os.system(f'rm {pp_dir}.DS_Store')
     print('.DS_Store file deleted successfully.')
@@ -274,6 +271,22 @@ for label in labels_list:
     df_pred_subtr.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
 
 
+
+# Move .p and .html to destination folders
+for subject in subjects:
+	func_sub_dir = f"{func_dir}/{subject}"
+	
+	# .p files
+	rsync_mask_cmd = f"rsync -avuz {func_sub_dir}/*.p {mask_dir}/{subject}/"
+	rm_mask_cmd = f"rm -Rf {func_sub_dir}/*.p"
+	os.system(rsync_mask_cmd)
+	os.system(rm_mask_cmd)
+	
+	# .html files
+	rsync_report_cmd = f"rsync -avuz --remove-source-files {func_sub_dir}/*.html {report_dir}/{subject}/"
+	rm_report_cmd = f"rm -Rf {func_sub_dir}/*.html"
+	os.system(rsync_report_cmd)
+	os.system(rm_report_cmd)
 
 # Add chmod/chgrp
 print(f"Changing files permissions in {sys.argv[1]}/{sys.argv[2]}")
