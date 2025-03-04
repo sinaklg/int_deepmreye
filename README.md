@@ -38,12 +38,12 @@ Download the example dataset and model weigths by running:
 python example_usage.py int_dataset_example
 ```
 
-## Pipeline 
+The example contains 3 participants BOLD timeseries preprocessed and registered to individual T1w structural scans using fmriprep 23.1.4.
 
-Folder structure extents extisting BIDS structure. This is how the data repository will be structured. Download the weights from (https://figshare.com/s/a381947ea8564235cdd0) or by running the example_usage script (see below).
+Data repository will be structured as such:
 
-```bash
-main_dir/project_name/derivatives
+```
+int_dataset_example/DeepMReyeCalib/derivatives/int_deepmreye
 ├── figures
 ├── func
 │   ├── sub-0X
@@ -76,16 +76,8 @@ main_dir/project_name/derivatives
 
 ```
 
-All parameters are set in settings. Specify your experiment details beforehand. For example:
-
-```
-"subjects": ["sub-0X","sub-0Y"], 
-"session": "ses-00", 
-"eye": "eye1", 
-"num_run": 3,
-"num_TR": 154, 
-
-```
+All analaysis parameters are set in [settings.json](settings.json).
+Make sure to specify this file to your experiment settings beforehand. 
 
 # Steps to follow for GPU usage mesocentre
 
