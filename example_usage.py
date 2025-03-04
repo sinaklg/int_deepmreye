@@ -16,10 +16,6 @@ To run:
 1. cd to function
 2. python example_usage.py [extraction directory] 
 -----------------------------------------------------------------------------------------
-Exemple:
-cd ~/projects/deepmreye/training_code
-python example_usage.py /scratch/mszinte/data 
------------------------------------------------------------------------------------------
 """
 import requests
 import zipfile
@@ -55,5 +51,3 @@ with zipfile.ZipFile(zip_path, "r") as zip_ref:
     zip_ref.extractall(extract_dir)
 
 print(f"Extraction complete to: {extract_dir}")
-
-

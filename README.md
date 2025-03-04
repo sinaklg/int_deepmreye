@@ -1,9 +1,9 @@
 # int_deepmreye
 
 By :       Sina KLING<br/>
-Project :  INT_DeepMReye <br/>
+Project :  int_deepmreye <br/>
 With :     Matthias NAU, Martin SZINTE<br/>
-Version:   1.0<br/>
+Version:   0.1<br/>
 
 ## Version description
 Gaze decoder using DeepMReye network (https://github.com/DeepMReye/DeepMReye) fine tuned for experiments at 
@@ -12,31 +12,30 @@ INT/CERIMED.
 
 ## Installation of deepmreye 
 
-It is recommmended to work using virtual environments. 
+It is recommmended to work using conda virtual environments. 
 Install DeepMReye with a CPU/GPU version of TensorFlow using the following command.
 
 ```
 conda create --name deepmreye python=3.9
 conda activate deepmreye
 pip install deepmreye
+git clone git@github.com:sinaklg/int_deepmreye.git
+cd int_deepmreye
 pip install -r requirements.txt
-
 ```
 
-For GPU support, install correct tensorflow version and GPU toolkits:
+For GPU support (if available and nvidia), install GPU toolkits:
 
 ```
-pip install tensorflow==2.11.0
 conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
-
 ```
 
 ## Model Weights and Example Data 
-Model weights and example data are available on figshare. Download everything automatically by running: 
+Model weights and example data are available [here](https://figshare.com/s/a381947ea8564235cdd0). 
+Download the example dataset and model weigths by running: 
 
 ```
-python example_usage.py [extraction directory]
-
+python example_usage.py int_dataset_example
 ```
 
 ## Pipeline 
