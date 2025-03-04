@@ -9,31 +9,18 @@ Input(s):
 sys.argv[1] -> main directory (str)
 sys.argv[2] -> project name (str)
 sys.argv[3] -> task name (str)
-sys.argv[4] -> group name (str) 
 -----------------------------------------------------------------------------------------
 Output(s):
-BIDS extended folder structre with deepmreye output: 
+BIDS extended folder structure with deepmreye output: 
 - figures: prediction_visualizer.html (Overview of prediction for all subjects)
 - masks: MNI space registered eyevoxel masks 
 - pp_data: labels used by model 
 - pred: tsv.gz (timestamp, x, y) of prediction in median (1/TR) and subTR (10/TR) resolution 
-for each subject as well as evaluation_dict.npy with all predictions and scores with 
+for each subject as well as evaluations dictionary including predictions and scores with 
 evaluation of prediction to labels
 - report: eye voxel mask extraction report per subject 
-- func: copied relavant func files 
------------------------------------------------------------------------------------------
-To run:
-1. cd to function
-2. python cerimed_deepmreyes.py [main directory] [project name] [task] [group]
------------------------------------------------------------------------------------------
-Exemple:
-cd ~/projects/deepmreye/training_code
-python cerimed_deepmreye.py /scratch/mszinte/data deepmreye DeepMReyeCalib 327 
 -----------------------------------------------------------------------------------------
 """
-#TODO 
-#flag to delete copied func files after running? 
-#find good name for repo
 
 # Import modules and add library to path
 import sys
@@ -53,15 +40,14 @@ from deepmreye.util import data_generator, model_opts
 sys.path.append("{}/utils".format(os.getcwd()))
 from training_utils import adapt_evaluation
 
-
 # Define paths 
-main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") #TODO find good name 
+main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") 
 project_name = sys.argv[2]
 fig_dir = f"{main_dir}/figures"
 func_dir = f"{main_dir}/func"  
-model_dir = f"{main_dir}/model/"
-model_file = f"{model_dir}modelinference_DeepMReyeCalib.h5"  #TODO where to store weights
-pp_dir = f"{main_dir}/pp_data_pretrained/"
+model_dir = f"{main_dir}/model"
+model_file = f"{model_dir}/int_deepmreye_weights.h5" 
+pp_dir = f"{main_dir}/pp_data"
 mask_dir = f"{main_dir}/mask"
 report_dir = f"{main_dir}/report"
 pred_dir = f"{main_dir}/pred"
@@ -73,7 +59,6 @@ os.makedirs(mask_dir, exist_ok=True)
 os.makedirs(report_dir, exist_ok=True)
 os.makedirs(pred_dir, exist_ok=True)
 
-
 # Define settings
 settings_file = "settings.json"
 if not os.path.exists(settings_file):
@@ -83,42 +68,17 @@ with open(settings_file) as f:
 
 subjects = settings['subjects']
 ses = settings["session"]
-print(ses)
 num_run = settings["num_run"]
 subTRs = settings['subTRs']
 TR = settings['TR']
 
 opts = model_opts.get_opts()
-opts["train_test_split"] = settings["train_test_split"]  #80/20
+opts["train_test_split"] = settings["train_test_split"]
 
 # Define environment cuda
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # stop warning
-#os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"  # use 3 gpu cards 
-
-
-# -------------------- Copy func files --------------------------------------------------------
-func_source_dir = f"{main_dir}/{project_name}/derivatives/fmriprep/fmriprep"
-dest_dir = func_dir
-task = sys.argv[3]
-
-#TODO 
-# if copy files ()
-for root, dirs, files in os.walk(func_source_dir):
-    for file in files:
-        if f"task-{task}" in file and "space-T1w_desc-preproc_bold.nii.gz" in file:
-
-            parts = root.split(os.sep)
-            subject = next((p for p in parts if p.startswith("sub-")), "unknown")
-            
-            # Define destination directory for the subject and session
-            subject_dest = os.path.join(dest_dir, subject)
-            os.makedirs(subject_dest, exist_ok=True)
-            
-            # Copy file to new location
-            src_file = os.path.join(root, file)
-            dest_file = os.path.join(subject_dest, file)
-          # shutil.copy(src_file, dest_file)
-            print(f"Copied {src_file} -> {dest_file}")
+if settings["partition"] == "volta" or settings["partition"] == "kepler":
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"  # use 3 gpu cards 
 
 
 # -------------- Preload masks to save time within subject loop---------------------------------
@@ -130,7 +90,6 @@ for subject in subjects:
     mask_sub_dir = f"{mask_dir}/{subject}"
     os.makedirs(mask_sub_dir, exist_ok=True)
     func_files = glob.glob(f"{func_sub_dir}/*.nii.gz")
-
 
     for func_file in func_files:
         mask_files = glob.glob(f"{mask_sub_dir}/*.p")  
@@ -157,7 +116,6 @@ for subject in subjects:
             else:
                 print(f"WARNING: No mask files found in {func_sub_dir} after processing.")
 
-            
 
 # -------------------- Pre-process data ---------------------------------------------
 # Pre-process data
@@ -184,7 +142,6 @@ for subject in subjects:
             this_label = this_label = np.zeros(
                 (this_mask.shape[3], 10, 2)
             )
-
 
             # Check if each functional image has a corresponding label
             if this_mask.shape[3] != this_label.shape[0]:
@@ -214,21 +171,16 @@ except Exception as e:
     print(f'An error occurred: {e}')
 
 # Define paths to dataset
-datasets = [
-    pp_dir + p for p in os.listdir(pp_dir) if "no_label" in p
-]
+datasets = [pp_dir + p for p in os.listdir(pp_dir) if "no_label" in p]
 
 # Load data from one participant to showcase input/output
 X, y = data_generator.get_all_subject_data(datasets[0])
 print(f"Input: {X.shape}, Output: {y.shape}")
 
-test_participants = [
-    pp_dir + p for p in os.listdir(pp_dir) if "no_label" in p
-]
+test_participants = [pp_dir + p for p in os.listdir(pp_dir) if "no_label" in p]
 generators = data_generator.create_generators(test_participants,
                                               test_participants)
-generators = (*generators, test_participants, test_participants
-              )  # Add participant list
+generators = (*generators, test_participants, test_participants)  # Add participant list
 
 # -------------------- Train and evaluate model -----------------------------------------
 # Get untrained model and load with trained weights
@@ -238,8 +190,7 @@ generators = (*generators, test_participants, test_participants
                                              return_untrained=True)
 model_inference.load_weights(model_file)
 
-(evaluation, scores) = train.evaluate_model(
-    dataset=f"{task}_PT",
+(evaluation, scores) = train.evaluate_model(dataset=f"{task}_PT",
     model=model_inference,
     generators=generators,
     save=False,
@@ -270,8 +221,6 @@ for label in labels_list:
     df_pred_median.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
     df_pred_subtr.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
 
-
-
 # Move .p and .html to destination folders
 for subject in subjects:
 	func_sub_dir = f"{func_dir}/{subject}"
@@ -281,8 +230,3 @@ for subject in subjects:
 	rm_report_cmd = f"rm -Rf {func_sub_dir}/*.html"
 	os.system(rsync_report_cmd)
 	os.system(rm_report_cmd)
-
-# Add chmod/chgrp
-print(f"Changing files permissions in {sys.argv[1]}/{sys.argv[2]}")
-os.system(f"chmod -Rf 771 {sys.argv[1]}/{sys.argv[2]}") #TODO adapt
-os.system(f"chgrp -Rf {sys.argv[3]} {sys.argv[1]}/{sys.argv[2]}")
