@@ -49,5 +49,6 @@ else:
 # Extract ZIP file
 with zipfile.ZipFile(zip_path, "r") as zip_ref:
     zip_ref.extractall(extract_dir)
+    os.system(f'rm {zip_path}')
 
 print(f"Extraction complete to: {extract_dir}")
