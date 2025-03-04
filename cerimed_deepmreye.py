@@ -276,13 +276,7 @@ for label in labels_list:
 for subject in subjects:
 	func_sub_dir = f"{func_dir}/{subject}"
 	
-	# .p files
-	rsync_mask_cmd = f"rsync -avuz {func_sub_dir}/*.p {mask_dir}/{subject}/"
-	rm_mask_cmd = f"rm -Rf {func_sub_dir}/*.p"
-	os.system(rsync_mask_cmd)
-	os.system(rm_mask_cmd)
-	
-	# .html files
+	# move .html files
 	rsync_report_cmd = f"rsync -avuz --remove-source-files {func_sub_dir}/*.html {report_dir}/{subject}/"
 	rm_report_cmd = f"rm -Rf {func_sub_dir}/*.html"
 	os.system(rsync_report_cmd)
