@@ -6,8 +6,7 @@ With :     Matthias NAU, Martin SZINTE<br/>
 Version:   0.1<br/>
 
 ## Version description
-Gaze decoder using DeepMReye network (https://github.com/DeepMReye/DeepMReye) fine tuned for experiments at 
-INT/CERIMED. 
+Gaze decoder using DeepMReye network (https://github.com/DeepMReye/DeepMReye) fine tuned for experiments at MRI INT.
 
 
 ## Installation of deepmreye 
