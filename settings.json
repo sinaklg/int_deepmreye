@@ -1,5 +1,5 @@
 {
-"subjects": ["sub-01", "sub-03"], 
+"subjects": ["sub-01", "sub-02", "sub-03"], 
 "session": "ses-02", 
 "num_run": 3,
 "num_TR": 154, 
@@ -12,5 +12,6 @@
 "account": "b327", 
 "nodes": 1, 
 "gpus": 3, 
-"time": "1:00:00"
+"time": "1:00:00",
+"train_test_split": 0.8
 }

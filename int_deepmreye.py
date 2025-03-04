@@ -43,11 +43,12 @@ from training_utils import adapt_evaluation
 # Define paths 
 main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") 
 project_name = sys.argv[2]
+task = sys.argv[3]
 fig_dir = f"{main_dir}/figures"
 func_dir = f"{main_dir}/func"  
 model_dir = f"{main_dir}/model"
 model_file = f"{model_dir}/int_deepmreye_weights.h5" 
-pp_dir = f"{main_dir}/pp_data"
+pp_dir = f"{main_dir}/pp_data/"
 mask_dir = f"{main_dir}/mask"
 report_dir = f"{main_dir}/report"
 pred_dir = f"{main_dir}/pred"
