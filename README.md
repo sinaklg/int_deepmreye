@@ -8,7 +8,6 @@ Version:   0.1<br/>
 ## Version description
 Gaze decoder using DeepMReye network (https://github.com/DeepMReye/DeepMReye) fine tuned for experiments at MRI INT.
 
-
 ## Installation of deepmreye 
 
 It is recommmended to work using conda virtual environments. 
@@ -75,32 +74,11 @@ int_dataset_example/DeepMReyeCalib/derivatives/int_deepmreye
 
 ```
 
-All analaysis parameters are set in [settings.json](settings.json).
+## To run
+All analaysis parameters are in [settings.json](settings.json).
 Make sure to specify this file to your experiment settings beforehand. 
-
-# Steps to follow for GPU usage AMU Mesocentre
-
-Make sure the partition in settings is set to "volta" or "kepler". 
-
-1. Generate SLURM script by running 
-
-``` 
-python generate_sh.py 
+Just run the main script with correct input (see header in [decode_gaze.py](decode_gaze.py)
 
 ```
-
-2. Run SLURM script to run the main deepmreye pipeline on mesocentre
-
-```
-sbatch run_pretraining.sh 
-
-```
-
-# Steps to follow for local running 
-
-Just run the main script with
-
-```
-python cerimed_deepmreye.py [main_directory] [project_name] [task] [group]
-
+python decode_gaze.py [main_dir] [project_dir] [task]
 ```
