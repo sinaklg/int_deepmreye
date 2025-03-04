@@ -79,7 +79,7 @@ int_dataset_example/DeepMReyeCalib/derivatives/int_deepmreye
 All analaysis parameters are set in [settings.json](settings.json).
 Make sure to specify this file to your experiment settings beforehand. 
 
-# Steps to follow for GPU usage mesocentre
+# Steps to follow for GPU usage AMU Mesocentre
 
 Make sure the partition in settings is set to "volta" or "kepler". 
 
