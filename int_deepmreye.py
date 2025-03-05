@@ -44,6 +44,7 @@ from training_utils import adapt_evaluation
 main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") 
 project_name = sys.argv[2]
 task = sys.argv[3]
+task = "DeepMReyeCalib"
 fig_dir = f"{main_dir}/figures"
 func_dir = f"{main_dir}/func"  
 model_dir = f"{main_dir}/model"
@@ -88,12 +89,15 @@ if settings["partition"] == "volta" or settings["partition"] == "kepler":
 for subject in subjects:
     print(f"Running {subject}")
     func_sub_dir = f"{func_dir}/{subject}"
+    print(func_sub_dir)
     mask_sub_dir = f"{mask_dir}/{subject}"
     os.makedirs(mask_sub_dir, exist_ok=True)
     func_files = glob.glob(f"{func_sub_dir}/*.nii.gz")
+    print(func_files)
 
     for func_file in func_files:
         mask_files = glob.glob(f"{mask_sub_dir}/*.p")  
+        
 
         if mask_files:
             print(f"Mask for {subject} exists. Continuing")
@@ -208,19 +212,28 @@ fig.write_html(f"{fig_dir}/prediction_visualizer.html")
 np.save(f"{pred_dir}/evaluation_dict_{task}.npy",evaluation)
 np.save(f"{pred_dir}/scores_dict_{task}.npy",scores)
 
+
 # Save predictions as tsv
 labels_list = os.listdir(pp_dir)
 
+
 for label in labels_list: 
     df_pred_median, df_pred_subtr = adapt_evaluation(evaluation[f'{main_dir}/pp_data/{label}'])
-    
-    # Add timestamps
-    df_pred_median.insert(0, 'timestamp', df_pred_median.index * TR)
-    df_pred_subtr.insert(0, 'timestamp', df_pred_subtr.index * (10 * TR))
-    
+
+    df_pred_median = df_pred_median.reset_index(drop=True)
+    df_pred_median.insert(0, 'timestamp', df_pred_median.index.astype(int) * TR)
+   
+
+    df_pred_subtr = df_pred_subtr.reset_index()  # Flatten MultiIndex
+    df_pred_subtr.insert(0, 'timestamp', df_pred_subtr.index * (TR * 10)) 
+
+    # Keep only timestamp, X, and Y columns
+    df_pred_median = df_pred_median[['timestamp', 'X', 'Y']]
+    df_pred_subtr = df_pred_subtr[['timestamp', 'X', 'Y']]
     # Save to CSV
     df_pred_median.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
     df_pred_subtr.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
+
 
 # Move .p and .html to destination folders
 for subject in subjects:
@@ -231,3 +244,4 @@ for subject in subjects:
 	rm_report_cmd = f"rm -Rf {func_sub_dir}/*.html"
 	os.system(rsync_report_cmd)
 	os.system(rm_report_cmd)
+# %%
