@@ -66,9 +66,9 @@ if settings['gpu_use']:
     with open(sh_file, "w") as f:
         f.write(slurm_gpu_script)
         f.write(python_script)
-    # os.system(f"sbatch {sh_file}")
+    os.system(f"sbatch {sh_file}")
 else:
     # Write the script to file
     with open(sh_file, "w") as f:
         f.write(python_script)
-    # os.system(f"sh {sh_file}")
+    os.system(f"sh {sh_file}")

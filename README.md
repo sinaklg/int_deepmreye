@@ -29,9 +29,9 @@ conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
 ```
 
 ## Model Weights and Example Data 
-Model weights and example data are available [here](https://figshare.com/s/a381947ea8564235cdd0). 
-Download the example dataset and model weigths by running: 
+Model [weights](https://figshare.com/ndownloader/files/52782590?private_link=a381947ea8564235cdd0) and example data are available [here](https://figshare.com/s/a381947ea8564235cdd0). 
 
+Download the example dataset and model weigths by running: 
 ```
 python download_dataset_weights.py int_dataset_example
 ```
@@ -81,4 +81,10 @@ Just run the main script with correct input (see header in [decode_gaze.py](deco
 
 ```
 python decode_gaze.py [main_dir] [project_dir] [task]
+```
+
+## Example :
+```
+python download_dataset_weights.py int_dataset_example
+python decode_gaze.py int_dataset_example DeepMReyeCalib
 ```
