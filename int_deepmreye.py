@@ -32,6 +32,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import shutil
+import re
 
 # DeepMReye imports
 from deepmreye import analyse, preprocess, train
@@ -44,7 +45,6 @@ from training_utils import adapt_evaluation
 main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") 
 project_name = sys.argv[2]
 task = sys.argv[3]
-task = "DeepMReyeCalib"
 fig_dir = f"{main_dir}/figures"
 func_dir = f"{main_dir}/func"  
 model_dir = f"{main_dir}/model"
@@ -216,23 +216,32 @@ np.save(f"{pred_dir}/scores_dict_{task}.npy",scores)
 # Save predictions as tsv
 labels_list = os.listdir(pp_dir)
 
-
-for label in labels_list: 
+for label in labels_list:
+    # Extract subject name using regex
+    subject = label.split("_")[0]  
+    print(f"saving subject: {subject}")
+    # Get predictions
     df_pred_median, df_pred_subtr = adapt_evaluation(evaluation[f'{main_dir}/pp_data/{label}'])
 
-    df_pred_median = df_pred_median.reset_index(drop=True)
-    df_pred_median.insert(0, 'timestamp', df_pred_median.index.astype(int) * TR)
-   
+    # Split into `num_run` equal parts BEFORE adding timestamps
+    df_pred_median_parts = np.array_split(df_pred_median, num_run)
+    df_pred_subtr_parts = np.array_split(df_pred_subtr, num_run)
 
-    df_pred_subtr = df_pred_subtr.reset_index()  # Flatten MultiIndex
-    df_pred_subtr.insert(0, 'timestamp', df_pred_subtr.index * (TR * 10)) 
+    # Process and save each part
+    for i, (df_median_part, df_subtr_part) in enumerate(zip(df_pred_median_parts, df_pred_subtr_parts)):
+        df_median_part = df_median_part.reset_index(drop=True)
+        df_subtr_part = df_subtr_part.reset_index(drop=True)
 
-    # Keep only timestamp, X, and Y columns
-    df_pred_median = df_pred_median[['timestamp', 'X', 'Y']]
-    df_pred_subtr = df_pred_subtr[['timestamp', 'X', 'Y']]
-    # Save to CSV
-    df_pred_median.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
-    df_pred_subtr.to_csv(f'{model_dir}/{os.path.basename(label)[:6]}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
+        df_median_part.insert(0, 'timestamp', df_median_part.index.astype(int) * TR)
+        df_subtr_part.insert(0, 'timestamp', df_subtr_part.index * (TR * 10))
+
+        # Keep only relevant columns
+        df_median_part = df_median_part[['timestamp', 'X', 'Y']]
+        df_subtr_part = df_subtr_part[['timestamp', 'X', 'Y']]
+
+        # Save 
+        df_median_part.to_csv(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
+        df_subtr_part.to_csv(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
 
 
 # Move .p and .html to destination folders
@@ -244,4 +253,4 @@ for subject in subjects:
 	rm_report_cmd = f"rm -Rf {func_sub_dir}/*.html"
 	os.system(rsync_report_cmd)
 	os.system(rm_report_cmd)
-# %%
+
