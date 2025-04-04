@@ -1,6 +1,6 @@
 """
 -----------------------------------------------------------------------------------------
-download_dataset_weights.py
+download_example.py
 -----------------------------------------------------------------------------------------
 Goal of the script:
 Download example data from figshare 
@@ -14,7 +14,7 @@ Extracted DeepMreyeCalib folder structure of example data
 -----------------------------------------------------------------------------------------
 To run:
 1. cd to function
-2. python example_usage.py [extraction directory] 
+2. python download_example.py [extraction directory] 
 -----------------------------------------------------------------------------------------
 """
 import requests

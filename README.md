@@ -33,7 +33,7 @@ Model [weights](https://figshare.com/ndownloader/files/52782590?private_link=a38
 
 Download the example dataset and model weigths by running: 
 ```
-python download_dataset_weights.py int_dataset_example
+python download_example.py int_dataset_example
 ```
 
 The example contains 3 participants BOLD timeseries preprocessed and registered to individual T1w structural scans using fmriprep 23.1.4.
