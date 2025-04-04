@@ -7,7 +7,7 @@
 "TR": 1.2, 
 "subTRs": 10, 
 "ylim": [-15, 15],
-"gpu_use": 1,
+"gpu_use": 0,
 "partition": "volta", 
 "account": "b327", 
 "nodes": 1, 
