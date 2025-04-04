@@ -84,42 +84,54 @@ if settings["partition"] == "volta" or settings["partition"] == "kepler":
 
 
 # -------------- Preload masks to save time within subject loop---------------------------------
+# Load masks/templates once
 (eyemask_small, eyemask_big, dme_template, mask, x_edges, y_edges, z_edges) = preprocess.get_masks()
 
 for subject in subjects:
     print(f"Running {subject}")
     func_sub_dir = f"{func_dir}/{subject}"
-    print(func_sub_dir)
     mask_sub_dir = f"{mask_dir}/{subject}"
     os.makedirs(mask_sub_dir, exist_ok=True)
-    func_files = glob.glob(f"{func_sub_dir}/*.nii.gz")
+
+    # Get all run files
+    func_files = sorted(glob.glob(f"{func_sub_dir}/*.nii.gz"))  # one .nii.gz per run
     print(func_files)
 
     for func_file in func_files:
-        mask_files = glob.glob(f"{mask_sub_dir}/*.p")  
-        
+        # Extract run number from filename
+        run_match = re.search(r'run-(\d+)', func_file)
+        run_number = run_match.group(1) if run_match else "01"
 
-        if mask_files:
-            print(f"Mask for {subject} exists. Continuing")
-        else: 
-            print(f"Mask missing for {subject}. Running mask generation...")
-            preprocess.run_participant(fp_func=func_file, 
-                                    dme_template=dme_template, 
-                                    eyemask_big=eyemask_big, 
-                                    eyemask_small=eyemask_small,
-                                    x_edges=x_edges, y_edges=y_edges, z_edges=z_edges,
-                                    transforms=['Affine', 'Affine', 'SyNAggro'])
-            
-            # Find newly created mask files in func_dir
-            new_mask_files = glob.glob(f"{func_sub_dir}/*.p")  
-            
-            if new_mask_files:
-                print(f"Moving mask files for {subject} to {mask_sub_dir}...")
-                for mask_file in new_mask_files:
-                    shutil.move(mask_file, mask_sub_dir)
-                print(f"Mask files moved successfully to {mask_sub_dir}.")
-            else:
-                print(f"WARNING: No mask files found in {func_sub_dir} after processing.")
+        # Desired mask filename for this run
+        mask_filename = f"mask_{subject}_ses-02_task-{task}_run-{run_number}_space-T1w_desc-preproc_bold.p"
+        mask_path = os.path.join(mask_sub_dir, mask_filename)
+
+        # Check if mask already exists for this specific run
+        if os.path.exists(mask_path):
+            print(f"Mask for {subject} run-{run_number} already exists. Skipping.")
+            continue
+
+        print(f"Mask for {subject} run-{run_number} missing. Running mask generation...")
+
+        # Generate the mask
+        preprocess.run_participant(
+            fp_func=func_file, 
+            dme_template=dme_template, 
+            eyemask_big=eyemask_big, 
+            eyemask_small=eyemask_small,
+            x_edges=x_edges, y_edges=y_edges, z_edges=z_edges,
+            transforms=['Affine', 'Affine', 'SyNAggro']
+        )
+
+        # Move new mask to mask directory
+        new_mask_files = glob.glob(f"{func_sub_dir}/*.p")
+        if new_mask_files:
+            for mask_file in new_mask_files:
+                shutil.move(mask_file, mask_sub_dir)
+            print(f"Mask files for run-{run_number} moved to {mask_sub_dir}.")
+        else:
+            print(f"WARNING: No mask files found after processing run-{run_number}.")
+
 
 
 # -------------------- Pre-process data ---------------------------------------------
@@ -217,31 +229,37 @@ np.save(f"{pred_dir}/scores_dict_{task}.npy",scores)
 labels_list = os.listdir(pp_dir)
 
 for label in labels_list:
-    # Extract subject name using regex
     subject = label.split("_")[0]  
     print(f"saving subject: {subject}")
+    
+    
     # Get predictions
     df_pred_median, df_pred_subtr = adapt_evaluation(evaluation[f'{main_dir}/pp_data/{label}'])
+    print(len(df_pred_median))
 
-    # Split into `num_run` equal parts BEFORE adding timestamps
+    # Split BEFORE adding timestamps
     df_pred_median_parts = np.array_split(df_pred_median, num_run)
-    df_pred_subtr_parts = np.array_split(df_pred_subtr, num_run)
+    df_pred_subtr_parts = np.array_split(df_pred_subtr, num_run * 10) 
 
-    # Process and save each part
-    for i, (df_median_part, df_subtr_part) in enumerate(zip(df_pred_median_parts, df_pred_subtr_parts)):
-        df_median_part = df_median_part.reset_index(drop=True)
-        df_subtr_part = df_subtr_part.reset_index(drop=True)
 
+    for i in range(num_run):
+        subtr_start = i * 10
+        subtr_end = (i + 1) * 10
+        df_subtr_part = pd.concat(df_pred_subtr_parts[subtr_start:subtr_end], ignore_index=True)
+        df_median_part = df_pred_median_parts[i].reset_index(drop=True)
+
+        # Add timestamps
         df_median_part.insert(0, 'timestamp', df_median_part.index.astype(int) * TR)
-        df_subtr_part.insert(0, 'timestamp', df_subtr_part.index * (TR * 10))
+        df_subtr_part.insert(0, 'timestamp', df_subtr_part.index.astype(int) * (TR / 10))  # Assuming 10 Hz
 
         # Keep only relevant columns
         df_median_part = df_median_part[['timestamp', 'X', 'Y']]
         df_subtr_part = df_subtr_part[['timestamp', 'X', 'Y']]
 
-        # Save 
+        # Save
         df_median_part.to_csv(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
         df_subtr_part.to_csv(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
+
 
 
 # Move .p and .html to destination folders
