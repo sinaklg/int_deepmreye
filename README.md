@@ -85,6 +85,6 @@ python decode_gaze.py [main_dir] [project_dir] [task]
 
 ## Example :
 ```
-python download_dataset_weights.py int_dataset_example
+python download_example.py int_dataset_example
 python decode_gaze.py int_dataset_example DeepMReyeCalib
 ```
