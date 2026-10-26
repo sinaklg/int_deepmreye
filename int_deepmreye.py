@@ -39,7 +39,7 @@ from deepmreye import analyse, preprocess, train
 from deepmreye.util import data_generator, model_opts 
 
 sys.path.append("{}/utils".format(os.getcwd()))
-from training_utils import adapt_evaluation
+from training_utils import adapt_evaluation, write_deepmreye_sidecar 
 
 # Define paths 
 main_dir = os.path.join(sys.argv[1], sys.argv[2], "derivatives", "int_deepmreye") 
@@ -257,11 +257,12 @@ for label in labels_list:
         df_subtr_part = df_subtr_part[['timestamp', 'X', 'Y']]
 
         # Save
-        df_median_part.to_csv(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
-        df_subtr_part.to_csv(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
+        df_median_part.to_csv(f'{pred_dir}/{subject}_{ses}_task-{task}_run-0{i+1}_pred_median.tsv.gz', sep='\t', index=False, compression='gzip')
+        df_subtr_part.to_csv(f'{pred_dir}/{subject}_{ses}_task-{task}_run-0{i+1}_pred_subtr.tsv.gz', sep='\t', index=False, compression='gzip')
 
-
-
+        # Write side car for BIDS compatablity (and eyeprep read-in)
+        write_deepmreye_sidecar(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_median.tsv.gz', TR, 1)
+        write_deepmreye_sidecar(f'{pred_dir}/{subject}_ses-{ses}_task-{task}_run-0{i+1}_pred_subtr.tsv.gz', TR, subTRs)
 # Move .p and .html to destination folders
 for subject in subjects:
 	func_sub_dir = f"{func_dir}/{subject}"

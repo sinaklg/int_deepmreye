@@ -60,5 +60,26 @@ def chunk_and_median(eyetracking_data, sampling_rate=1000, chunk_duration=1.2):
     return medians
 
 
-
+def write_deepmreye_sidecar(tsv_path, tr, n_subtr):
+    import json
+    from pathlib import Path
+    """Write a JSON sidecar next to an int_deepmreye prediction file (pred_median / pred_subtr)."""
+    sidecar = {
+        "PhysioType": "eyetrack",
+        "SamplingFrequency": n_subtr / tr,
+        "StartTime": 0.0,
+        "Columns": ["timestamp", "X", "Y"],
+        "RecordedEye": "cyclopean",
+        "SampleCoordinateSystem": "gaze-on-screen",
+        "EnvironmentCoordinates": "center",
+        "RepetitionTime": tr,
+        "SubTRs": n_subtr,
+        "timestamp": {"Description": "Time from the onset of the first volume", "Units": "s"},
+        "X": {"Description": "Predicted gaze position x (positive = right)", "Units": "deg"},
+        "Y": {"Description": "Predicted gaze position y (positive = up)", "Units": "deg"},
+        "GeneratedBy": [{"Name": "int_deepmreye"}],
+    }
+    json_path = Path(str(tsv_path).replace(".tsv.gz", ".json"))
+    json_path.write_text(json.dumps(sidecar, indent=4))
+    return json_path
 
